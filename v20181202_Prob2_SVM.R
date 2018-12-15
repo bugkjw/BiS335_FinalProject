@@ -292,13 +292,7 @@ cat(sprintf("\nSupport vector machine performance on test set: %2.3g\n",cMat$ove
 {
   # Tune grid
   png(filename = "./Result/SVM/SVM_plot_radial_kernel_tunegrid.png")
-  svm.plot <- tune.svm(survival_index ~ .-sample_id
-                       , data = clin_dataset_DEV
-                       , kernel = "radial"
-                       , gamma = c(0.001, 0.01, 0.1, 1, 10, 50, 100)
-                       , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100)
-                       , tunecontrol = fit.control)
-  plot(svm.plot, type = "perspective", theta = 100, phi = 20)
+  plot(tune.out, type = "perspective", theta = 100, phi = 20)
   dev.off()
 }
 {
