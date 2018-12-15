@@ -1,12 +1,6 @@
-#install.packages("tree")
-library(tree)
 library(MASS)
-#install.packages("randomForest")
-library(randomForest)
-#install.packages("gbm")
-library(gbm)
-#install.packages("caret")
-library(caret)
+#install.packages("klaR")
+library(klaR)
 #install.packages("doParallel")
 library(doParallel)
 registerDoParallel(4)
@@ -96,7 +90,7 @@ for(ii in 1:length(feature_all)){
   }
   CV_errors_procedure[ii] <- min(candidate_errors)
   # Check for improvement
-  if (min(candidate_errors) > last_min_error){break}
+  if (min(candidate_errors) >= last_min_error){break}
   # Update threshold
   last_min_error <- min(candidate_errors)
   # Greedy feature selection
@@ -169,15 +163,13 @@ LDAError_F <- 1-as.numeric(cMat$overall[1])
 {
   # Performance
   png(filename="./Result/LDA/LDA_performance.png")
-  plot(clin_dataset$survival_index,lda.pred$class,xlab = "Test data", ylab = "Prediction by LDA", col= c(1,2,3,4))
+  plot(clin_dataset_HOLDOUT$survival_index,lda.pred$class,xlab = "Test data", ylab = "Prediction by LDA", col= c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
 
 # Visualization
-#install.packages("klaR")
-library(klaR)
 {
   par(mfrow = c(1,1))
   # Test data and feature assessment
@@ -185,17 +177,17 @@ library(klaR)
   # Mapping of training data onto a pair of discriminant variables
   # Data label
   png(filename="./Result/LDA/LDA_training_data_12.png")
-  plot(lda.Final.values$x[,1],lda.Final.values$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
+  plot(lda.Final.values$x[,1],lda.Final.values$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset_DEV$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD1-LD2")
   dev.off()
   png(filename="./Result/LDA/LDA_training_data_23.png")
-  plot(lda.Final.values$x[,2],lda.Final.values$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
+  plot(lda.Final.values$x[,2],lda.Final.values$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset_DEV$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD2-LD3")
   dev.off()
   png(filename="./Result/LDA/LDA_training_data_31.png")
-  plot(lda.Final.values$x[,3],lda.Final.values$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
+  plot(lda.Final.values$x[,3],lda.Final.values$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset_DEV$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD3-LD1")
   dev.off()
@@ -222,17 +214,17 @@ library(klaR)
   # Test data performance
   # Data label
   png(filename="./Result/LDA/LDA_test_data_12.png")
-  plot(lda.pred$x[,1],lda.pred$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
+  plot(lda.pred$x[,1],lda.pred$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset_HOLDOUT$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD1-LD2")
   dev.off()
   png(filename="./Result/LDA/LDA_test_data_23.png")
-  plot(lda.pred$x[,2],lda.pred$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
+  plot(lda.pred$x[,2],lda.pred$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset_HOLDOUT$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD2-LD3")
   dev.off()
   png(filename="./Result/LDA/LDA_test_data_31.png")
-  plot(lda.pred$x[,3],lda.pred$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
+  plot(lda.pred$x[,3],lda.pred$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset_HOLDOUT$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD3-LD1")
   dev.off()

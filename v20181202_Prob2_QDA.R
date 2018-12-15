@@ -1,14 +1,13 @@
-#install.packages("tree")
-library(tree)
 library(MASS)
-#install.packages("randomForest")
-library(randomForest)
-#install.packages("gbm")
-library(gbm)
-#install.packages("caret")
-library(caret)
+#install.packages("klaR")
+library(klaR)
+#install.packages("doParallel")
+library(doParallel)
+registerDoParallel(4)
+getDoParWorkers()
 
-setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
+setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
+#setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
@@ -123,13 +122,14 @@ for(ii in 1:length(feature_all)){
   # Expanded gex and mut feature set
   gex_feature <- c(gex_feature, new_feature)
 }
-png(filename="./2/QDA/CV_errors.png")
-{par(mfrow = c(1,1))
+{
+  par(mfrow = c(1,1))
+  png(filename="./Result/QDA/CV_errors.png")
   plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
   lines(1:ii, CV_errors_procedure)
   text(1:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
+  dev.off()
 }
-dev.off()
 
 # Test error estimate using hold-out set
 # Dataset condtruction
@@ -150,6 +150,20 @@ clin_dataset_HOLDOUT <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all =
 # Train by full dataset, test by hold-out subset!
 # QDA model fitting
 qda.Final <- qda(survival_index ~ .-sample_id, data = clin_dataset_DEV)
+# Training error
+qda.pred <- predict(qda.Final, clin_dataset_DEV, type = "class")
+cMat <- confusionMatrix(qda.pred$class,clin_dataset_DEV$survival_index)
+QDAError_T <- 1-as.numeric(cMat$overall[1])
+{
+  par(mfrow = c(1,1))
+  # Performance
+  png(filename="./Result/QDA/QDA_training.png")
+  plot(clin_dataset_DEV$survival_index,qda.pred$class,xlab = "Training data", ylab = "Prediction by QDA", col= c(1,3,4))
+  legend("topleft", legend = c("Class 1","Class 3","Class 4"), fill = c(1,3,4))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat$overall[1]))
+  dev.off()
+}
+# Test
 qda.pred <- predict(qda.Final, clin_dataset_HOLDOUT, type = "class")
 cMat <- confusionMatrix(qda.pred$class,clin_dataset_HOLDOUT$survival_index)
 QDAError_F <- 1-as.numeric(cMat$overall[1])
@@ -168,7 +182,7 @@ library(klaR)
   # https://stats.stackexchange.com/questions/143692/plotting-qda-projections-in-r
   # https://stackoverflow.com/questions/23420094/cant-plot-the-result-of-a-quadratic-discriminant-analysis-using-partimat-in-the
   # X11(width=20, height=20)
-  png(filename="./2/QDA/Feature_3_boundary.png")
+  png(filename="./Result/QDA/Feature_3_boundary.png")
   partimat(survival_index ~ .-sample_id, data = clin_dataset_DEV[,1:5], method = "qda",
            plot.matrix = TRUE, col.correct='blue', col.wrong='red')
   dev.off()
@@ -176,11 +190,11 @@ library(klaR)
 {
   par(mfrow = c(1,1))
   # Performance
-  png(filename="./2/QDA/QDA_performance.png")
+  png(filename="./Result/QDA/QDA_performance.png")
   plot(clin_dataset_HOLDOUT$survival_index,qda.pred$class,xlab = "Test data", ylab = "Prediction by QDA", col= c(1,3,4))
   legend("topleft", legend = c("Class 1","Class 3","Class 4"), fill = c(1,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
 
-save.image("./2/QDA/v20181204_QDA_data.RData")
+save.image("./Result/QDA/QDA_data.RData")
