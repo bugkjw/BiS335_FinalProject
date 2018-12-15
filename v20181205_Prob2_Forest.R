@@ -3,12 +3,11 @@ library(tree)
 library(MASS)
 #install.packages("randomForest")
 library(randomForest)
-#install.packages("gbm")
-library(gbm)
 #install.packages("caret")
 library(caret)
+library(e1071)
 
-setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
+setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
@@ -60,8 +59,6 @@ SELECT <- sample(nrow(shuffle)*0.2)
 DEV_DATA <- shuffle[-SELECT,]
 HOLDOUT_DATA <- shuffle[SELECT,]
 
-library(e1071)
-library(caret)
 # Bagging
 set.seed(1)
 # Use all the features

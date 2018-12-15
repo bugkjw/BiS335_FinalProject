@@ -1,21 +1,15 @@
 #install.packages("e1071")
 library(e1071)
 library(MASS)
-#install.packages("randomForest")
-library(randomForest)
-#install.packages("gbm")
-library(gbm)
 #install.packages("caret")
 library(caret)
 
-setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
+setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
 gex <- readRDS("./Data/expression.rds");
-mut <- readRDS("./Data/mutation.rds");
 gex_res <- read.csv("./Data/gex_anova_result.csv");
-mut_res <- read.csv("./Data/mut_chisq_result.csv");
 
 # Use the class label found in #1, generate entire labeled dataset
 labels <- unique(clin$survival_index);
@@ -30,15 +24,32 @@ HOLDOUT_DATA <- shuffle[SELECT,]
 # Filter gene expression and mutation data based on dataset separation
 gex_DEV <- gex[,colnames(gex) %in% DEV_DATA$sample_id]
 gex_HOLDOUT <- gex[,colnames(gex) %in% HOLDOUT_DATA$sample_id]
-mut_DEV <- mut[mut$sample_id %in% DEV_DATA$sample_id,]
-mut_HOLDOUT <- mut[mut$sample_id %in% HOLDOUT_DATA$sample_id,]
+
+# Data preprocessing: scale to [0,1]
+samples = sample(ncol(t(gex_DEV)), 20)
+{
+  png(filename="./Result/SVM/Before_preprocessing.png")
+  boxplot(t(gex_DEV)[,samples]
+          , xlab = "Features"
+          , ylab = "Expression, not scaled")
+  dev.off()
+}
+gex_minimum = apply(gex_DEV, 1, FUN=min, na.rm = T)
+gex_range = apply(gex_DEV - gex_minimum, 1, FUN=max, na.rm = T)
+gex_DEV = (gex_DEV - gex_minimum)/gex_range
+gex_HOLDOUT = (gex_HOLDOUT - gex_minimum)/gex_range
+{
+  png(filename="./Result/SVM/After_preprocessing.png")
+  boxplot(t(gex_DEV)[,samples]
+          , xlab = "Features"
+          , ylab = "Expression, scaled")
+  dev.off()
+}
 
 # Candidate genomic features to be used as features while fitting
 gex_feature_all <- as.character(gex_res$Hugo_Symbol);
 gex_feature_all <- gex_feature_all[gex_feature_all %in% rownames(gex_DEV)]; factor(gex_feature_all)
-mut_feature_all <- as.character(mut_res$Hugo_Symbol);
-mut_feature_all <- mut_feature_all[mut_feature_all %in% mut_DEV$Hugo_Symbol]; factor(mut_feature_all)
-feature_all <- c(gex_feature_all, mut_feature_all)
+feature_all <- gex_feature_all
 
 # Feature selection by forward stepwise selection
 # For each feature set expansion, assess 5-fold CV misclassification error rate
@@ -49,7 +60,7 @@ feature_all <- c(gex_feature_all, mut_feature_all)
 # 2. Get the feature with maximum error (5-fold CV) reduction
 # 3. Add to the current feature set
 # 4. Repeat until possible error deviation is all >0
-gex_feature <- c(); mut_feature <- c()
+gex_feature <- c()
 current_feature <- c()
 CV_errors_procedure <- c()
 last_min_error <- 1;
@@ -59,55 +70,24 @@ for(ii in 1:length(feature_all)){
   candidate_errors <- c()
   
   for (jj in 1:length(candidates)){
-    tmp_gex_feature <- c(); tmp_mut_feature <- c()
+    tmp_gex_feature <- c()
     # Temporary expanded feature set
     test_feature <- c(current_feature, candidates[jj])
     # Temporaty expanded gex and mut feature set
-    if (candidates[jj] %in% gex_feature_all){
-      tmp_gex_feature <- c(gex_feature, candidates[jj])
-      tmp_mut_feature <- mut_feature
-    }else if (candidates[jj] %in% mut_feature_all){
-      tmp_gex_feature <- gex_feature
-      tmp_mut_feature <- c(mut_feature, candidates[jj])
-    }
+    tmp_gex_feature <- c(gex_feature, candidates[jj])
     # Dataset condtruction
     # With the current feature set (to be tested),
     # make a table containing class labels and feature values of each patient.
     cat(sprintf("Feature %d selection, looking at candidate %d\n", ii, jj))
-    if (length(tmp_gex_feature) == 0){cat("No gex feature tested. Continue...\n")
-      flag <- 1
+    if (length(tmp_gex_feature) == 1){
+      gex_dataset <- data.frame(gex_DEV[tmp_gex_feature,])
+      colnames(gex_dataset) <- tmp_gex_feature
     }else{
-      flag <- 0
-      if (length(tmp_gex_feature) == 1){
-        gex_dataset <- data.frame(gex_DEV[tmp_gex_feature,])
-        colnames(gex_dataset) <- tmp_gex_feature
-      }else{
-        gex_dataset <- t(gex_DEV[tmp_gex_feature,])
-      }
-      gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-      clin_dataset <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
+      gex_dataset <- t(gex_DEV[tmp_gex_feature,])
     }
-    if (length(tmp_mut_feature) == 0){cat("No mut feature tested. Continue...\n")
-    }else{
-      mut_list <- unique(mut_DEV[mut_DEV$Hugo_Symbol %in% tmp_mut_feature, c("sample_id","Hugo_Symbol")])
-      mut_ids <- as.character(DEV_DATA$sample_id);
-      mut_dataset <- data.frame(matrix(0,nrow = length(mut_ids), ncol = length(tmp_mut_feature)));
-      rownames(mut_dataset) <- mut_ids; colnames(mut_dataset) <- tmp_mut_feature
-      for (ll in 1:length(mut_ids)){
-        for (mm in 1:length(tmp_mut_feature)){
-          tmp_pid <- mut_ids[ll]
-          tmp_gene <- toString(tmp_mut_feature[mm])
-          if (tmp_gene %in% mut_list[mut_list$sample_id == tmp_pid,]$Hugo_Symbol){
-            mut_dataset[tmp_pid,tmp_gene] <- TRUE
-          }else{
-            mut_dataset[tmp_pid,tmp_gene] <- FALSE
-          }
-        }
-      }
-      mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-      if (flag == 1){clin_dataset <- merge(DEV_DATA, mut_dataset, by = "sample_id", all = FALSE)
-      }else if (flag == 0){clin_dataset <- merge(clin_dataset, mut_dataset, by = "sample_id", all = FALSE)}
-    }
+    gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
+    clin_dataset <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
+    
     # Now we have the feature set and whole dataset.
     # Split the dataset for cross validation
     tmp_folds <- cut(seq(1,nrow(clin_dataset)),breaks=5,labels=FALSE)
@@ -122,8 +102,8 @@ for(ii in 1:length(feature_all)){
       # Support vector machine
       svm.trainData <- svm(survival_index ~ .-sample_id
                            , data = trainData, kernel = "radial"
-                           , cost = 50
-                           , gamma = 16)
+                           , cost = 1
+                           , gamma = 0.001)
       # Test
       svm.pred <- predict(svm.trainData, testData, type = "class")
       cMat <- confusionMatrix(svm.pred,testData$survival_index[as.integer(names(svm.pred))-min(as.integer(names(svm.pred)))+1])
@@ -142,111 +122,64 @@ for(ii in 1:length(feature_all)){
   # Expanded feature set
   current_feature <- c(current_feature, new_feature)
   # Expanded gex and mut feature set
-  if (new_feature %in% gex_feature_all){
-    gex_feature <- c(gex_feature, new_feature)
-  }else if (new_feature %in% mut_feature_all){
-    mut_feature <- c(mut_feature, new_feature)
-  }
+  gex_feature <- c(gex_feature, new_feature)
 }
-png(filename="./2/SVM/CV_errors.png")
-{par(mfrow = c(1,1))
+{
+  png(filename="./Result/SVM/CV_errors.png")
+  par(mfrow = c(1,1))
   plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
   lines(1:ii, CV_errors_procedure)
   text(1:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
+  dev.off()
 }
-dev.off()
 
 # Test error estimate using hold-out set
 # Dataset condtruction
 # With the feature set, make a table containing class labels and feature values of each patient.
 # Full data (for fitting)
 cat("Full dataset construction\n")
-if (length(gex_feature) == 0){cat("No gex feature tested. Continue...\n")
-  flag <- 1
+if (length(gex_feature) == 1){
+  gex_dataset <- data.frame(gex_DEV[gex_feature,])
+  colnames(gex_dataset) <- gex_feature
 }else{
-  flag <- 0
-  if (length(gex_feature) == 1){
-    gex_dataset <- data.frame(gex_DEV[gex_feature,])
-    colnames(gex_dataset) <- gex_feature
-  }else{
-    gex_dataset <- t(gex_DEV[gex_feature,])
-  }
-  gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-  clin_dataset_DEV <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
+  gex_dataset <- t(gex_DEV[gex_feature,])
 }
-if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
-}else{
-  mut_list <- unique(mut[mut$Hugo_Symbol %in% mut_feature, c("sample_id","Hugo_Symbol")])
-  mut_ids <- as.character(DEV_DATA$sample_id);
-  mut_dataset <- data.frame(matrix(0,nrow = length(mut_ids), ncol = length(mut_feature)));
-  rownames(mut_dataset) <- mut_ids; colnames(mut_dataset) <- mut_feature
-  for (ll in 1:length(mut_ids)){
-    for (mm in 1:length(mut_feature)){
-      tmp_pid <- mut_ids[ll]
-      tmp_gene <- toString(mut_feature[mm])
-      if (tmp_gene %in% mut_list[mut_list$sample_id == tmp_pid,]$Hugo_Symbol){
-        mut_dataset[tmp_pid,tmp_gene] <- TRUE
-      }else{
-        mut_dataset[tmp_pid,tmp_gene] <- FALSE
-      }
-    }
-  }
-  mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-  if (flag == 1){clin_dataset_DEV <- merge(gex_DEV, mut_dataset, by = "sample_id", all = FALSE)
-  }else if (flag == 0){clin_dataset_DEV <- merge(clin_dataset_DEV, mut_dataset, by = "sample_id", all = FALSE)}
-}
+gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
+clin_dataset_DEV <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
+clin_dataset_DEV <- na.omit(clin_dataset_DEV)
+
 # Hold-out
 cat("Hold-out dataset construction\n")
-if (length(gex_feature) == 0){cat("No gex feature tested. Continue...\n")
-  flag <- 1
+if (length(gex_feature) == 1){
+  gex_dataset <- data.frame(gex_HOLDOUT[gex_feature,])
+  colnames(gex_dataset) <- gex_feature
 }else{
-  flag <- 0
-  if (length(gex_feature) == 1){
-    gex_dataset <- data.frame(gex_HOLDOUT[gex_feature,])
-    colnames(gex_dataset) <- gex_feature
-  }else{
-    gex_dataset <- t(gex_HOLDOUT[gex_feature,])
-  }
-  gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-  clin_dataset_HOLDOUT <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all = FALSE)
+  gex_dataset <- t(gex_HOLDOUT[gex_feature,])
 }
-if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
-}else{
-  mut_list <- unique(mut_HOLDOUT[mut_DEV$Hugo_Symbol %in% mut_feature, c("sample_id","Hugo_Symbol")])
-  mut_ids <- as.character(HOLDOUT_DATA$sample_id);
-  mut_dataset <- data.frame(matrix(0,nrow = length(mut_ids), ncol = length(mut_feature)));
-  rownames(mut_dataset) <- mut_ids; colnames(mut_dataset) <- mut_feature
-  for (ll in 1:length(mut_ids)){
-    for (mm in 1:length(mut_feature)){
-      tmp_pid <- mut_ids[ll]
-      tmp_gene <- toString(mut_feature[mm])
-      if (tmp_gene %in% mut_list[mut_list$sample_id == tmp_pid,]$Hugo_Symbol){
-        mut_dataset[tmp_pid,tmp_gene] <- TRUE
-      }else{
-        mut_dataset[tmp_pid,tmp_gene] <- FALSE
-      }
-    }
-  }
-  mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-  if (flag == 1){clin_dataset_HOLDOUT <- merge(clin_dataset_HOLDOUT, mut_dataset, by = "sample_id", all = FALSE)
-  }else if (flag == 0){clin_dataset_HOLDOUT <- merge(clin_dataset_HOLDOUT, mut_dataset, by = "sample_id", all = FALSE)}
-}
+gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
+clin_dataset_HOLDOUT <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all = FALSE)
+clin_dataset_HOLDOUT <- na.omit(clin_dataset_HOLDOUT)
 
 # Dataset ready
 # Estimate test error using hold-out set
 # Train by full dataset, test by hold-out subset!
 # SVM model fitting
-set.seed(1); cost <- c(0.001, 0.01, 0.1, 1, 5, 10, 100)
+set.seed(1);
+fit.control <- tune.control(cross = 5)
 tune.out <-  tune.svm(survival_index ~ .-sample_id
                       , data = clin_dataset_DEV
                       , kernel = "radial"
-                      , gamma = 2^c(-8,-4,0, 1, 2, 3, 4)
-                      , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100))
+                      , gamma = c(0.001, 0.01, 0.1, 1, 10, 50, 100)
+                      , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100)
+                      , tunecontrol = fit.control)
 best <- tune.out$best.parameters
 # Test
-svm.Final <- svm(survival_index ~ .-sample_id
-                 , data = clin_dataset_DEV, kernel = "radial"
-                 , cost = best[2], gamma = best[1], scale = FALSE)
+svm.Final <- svm(survival_index ~ .
+                 , data = clin_dataset_DEV[,2:length(colnames(clin_dataset_DEV))]
+                 , kernel = "radial"
+                 , cost = as.numeric(best[2])
+                 , gamma = as.numeric(best[1])
+                 , scale = FALSE)
 svm.pred <- predict(svm.Final, clin_dataset_HOLDOUT, type = "class")
 cMat <- confusionMatrix(svm.pred,clin_dataset_HOLDOUT$survival_index)
 SVMError_F <- 1-as.numeric(cMat$overall[1])
@@ -254,30 +187,32 @@ SVMError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nSupport vector machine performance on test set: %2.3g\n",cMat$overall[1]))
 # Plot
 {
-  # Model fitting on training data
-  png(filename = "./2/SVM/SVM_plot_radial_kernel1.png")
-  svm.plot <- tune.svm(survival_index ~ .-sample_id
-                       , data = clin_dataset_DEV
-                       , kernel = "radial"
-                       , gamma = 2^c(-8,-4,0, 1, 2, 3, 4)
-                       , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100))
-  plot(svm.plot, type = "perspective", theta = 100, phi = 20)
+  # Model fitting on training data, decision boundary
+  png(filename = "./Result/SVM/SVM_plot_radial_kernel.png")
+  plot(svm.Final
+       , data = clin_dataset_DEV
+       , formula = as.formula(
+         paste(current_feature[1]," ~ ",current_feature[2]))
+       , xaxs = "r", yaxs = "r")
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   dev.off()
 }
 {
-  png(filename = "./2/SVM/SVM_plot_radial_kernel2.png")
+  # Tune grid
+  png(filename = "./Result/SVM/SVM_plot_radial_kernel_tunegrid.png")
   svm.plot <- tune.svm(survival_index ~ .-sample_id
                        , data = clin_dataset_DEV
                        , kernel = "radial"
-                       , gamma = 2^c(-8,-4,0, 1, 2, 3, 4)
-                       , cost = c(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005))
+                       , gamma = c(0.001, 0.01, 0.1, 1, 10, 50, 100)
+                       , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100)
+                       , tunecontrol = fit.control)
   plot(svm.plot, type = "perspective", theta = 100, phi = 20)
   dev.off()
 }
 {
   par(mfrow = c(1,1))
   # Performance
-  png(filename="./2/SVM/SVM_performance_radial_kernel.png")
+  png(filename="./Result/SVM/SVM_performance_radial_kernel.png")
   plot(clin_dataset_HOLDOUT$survival_index,svm.pred, xlab = "Test data", ylab = "Prediction by the support vector machine", col= c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
@@ -289,4 +224,4 @@ cat(sprintf("\nSupport vector machine performance on test set: %2.3g\n",cMat$ove
   cat(sprintf("\nSupport vector machine test error estimation:           %2.3f\n",SVMError_F));
 }
 
-save.image("./2/SVM/v20181204_SVM_data.RData")
+save.image("./Result/SVM/SVM_data.RData")
