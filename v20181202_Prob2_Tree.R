@@ -128,7 +128,7 @@ for(ii in 1:length(feature_all)){
   }
   CV_errors_procedure[ii] <- min(candidate_errors)
   # Check for improvement
-  if (min(candidate_errors) > last_min_error){break}
+  if (min(candidate_errors) >= last_min_error){break}
   # Update threshold
   last_min_error <- min(candidate_errors)
   # Greedy feature selection
@@ -144,11 +144,10 @@ for(ii in 1:length(feature_all)){
   }
 }
 {
-  png(filename="./2/Tree/CV_errors.png")
-  par(mfrow = c(1,1))
-  plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
-  lines(1:ii, CV_errors_procedure)
-  text(1:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
+  png(filename="./Result/Tree/CV_errors.png")
+  plot(2:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
+  lines(2:ii, CV_errors_procedure)
+  text(2:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
   dev.off()
 }
 
@@ -168,7 +167,7 @@ if (length(gex_feature) == 0){cat("No gex feature tested. Continue...\n")
     gex_dataset <- t(gex_DEV[gex_feature,])
   }
   gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-  clin_dataset_DEV <- merge(gex_DEV, gex_dataset, by = "sample_id", all = FALSE)
+  clin_dataset_DEV <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
 }
 if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
 }else{
@@ -232,23 +231,28 @@ if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
 # Estimate test error using hold-out set
 # Train by full dataset, test by hold-out subset!
 # Decision tree model fitting
-tree.Final <- tree(survival_index ~ .-sample_id, clin_dataset_full)
-# Decision tree: Test
+tree.Final <- tree(survival_index ~ .-sample_id, clin_dataset_DEV)
+# Training error
 tree.pred <- predict(tree.Final,clin_dataset_DEV,type = "class")
+cMat_T <- confusionMatrix(tree.pred,clin_dataset_DEV$survival_index)
+TreeError_T <- 1-as.numeric(cMat_T$overall[1])
+
+# Decision tree: Test
+tree.pred <- predict(tree.Final,clin_dataset_HOLDOUT,type = "class")
 cMat <- confusionMatrix(tree.pred,clin_dataset_HOLDOUT$survival_index)
 TreeError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nSimple decision tree performance on test set: %2.3g\n",cMat$overall[1]))
 # Plot
 {
   par(mfrow = c(1,2))
-  png(filename="./2/Tree/Simple_trained.png")
+  png(filename="./Result/Tree/Simple_trained.png")
   plot(tree.Final)
   text(tree.Final,pretty = 0)
   dev.off()
 }
 {
-  png(filename="./2/Tree/Simple_performance.png")
-  plot(clin_dataset$survival_index,tree.pred, xlab = "Test data", ylab = "Prediction by the simple decision tree", col = c(1,2,3,4))
+  png(filename="./Result/Tree/Simple_performance.png")
+  plot(clin_dataset_HOLDOUT$survival_index,tree.pred, xlab = "Test data", ylab = "Prediction by the simple decision tree", col = c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
@@ -258,27 +262,33 @@ cat(sprintf("\nSimple decision tree performance on test set: %2.3g\n",cMat$overa
 pruning <- cv.tree(tree.Final, FUN = prune.misclass, eps = 1e-3)
 Best <- pruning$size[pruning$dev == min(pruning$dev)]
 tree.Final <- prune.misclass(tree.Final, best = Best[1])
+# Training error
+tree.pred <- predict(tree.Final,clin_dataset_DEV,type = "class")
+cMat_T <- confusionMatrix(tree.pred,clin_dataset_DEV$survival_index)
+PTreeError_T <- 1-as.numeric(cMat_T$overall[1])
+
+
 # Pruning: Test
-ptree.pred <- predict(tree.Final,clin_dataset_DEV,type = "class")
+ptree.pred <- predict(tree.Final,clin_dataset_HOLDOUT,type = "class")
 cMat <- confusionMatrix(ptree.pred,clin_dataset_HOLDOUT$survival_index)
 PTreeError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nPruned decision tree performance on test set: %2.3g\n",cMat$overall[1]))
 # Plot
 {
   par(mfrow = c(1,2))
-  png(filename="./2/Tree/Pruning.png")
+  png(filename="./Result/Tree/Pruning.png")
   plot(pruning$size,pruning$dev,type = "b")
   plot(pruning$k,pruning$dev,type = "b")
   dev.off()
 }
 {
-  png(filename="./2/Tree/Pruned_tree.png")
+  png(filename="./Result/Tree/Pruned_tree.png")
   plot(tree.Final)
   text(tree.Final,pretty = 0)
   dev.off()
 }
 {
-  png(filename="./2/Tree/Pruned_performance.png")
+  png(filename="./Result/Tree/Pruned_performance.png")
   plot(clin_dataset_HOLDOUT$survival_index,ptree.pred, xlab = "Test data", ylab = "Prediction by the pruned decision tree", col = c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
@@ -291,5 +301,5 @@ cat(sprintf("\nPruned decision tree performance on test set: %2.3g\n",cMat$overa
   cat(sprintf("Pruned simple tree test error estimation:    %2.3f\n",PTreeError_F));
 }
 
-save.image("./2/Tree/v20181204_Tree_data.RData")
+save.image("./Result/Tree/Tree_data.RData")
 
