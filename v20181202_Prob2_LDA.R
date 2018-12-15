@@ -102,7 +102,7 @@ for(ii in 1:length(feature_all)){
   # Expanded gex feature set
   gex_feature <- c(gex_feature, new_feature)
 }
-png(filename="./2/LDA/CV_errors.png")
+png(filename="./Result/LDA/CV_errors.png")
 {par(mfrow = c(1,1))
   plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
   lines(1:ii, CV_errors_procedure)
@@ -136,7 +136,7 @@ clin_dataset <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all = FALSE)
 
 # Dataset ready
 # Estimate test error using hold-out set
-# Train by full dataset, test by hold-out subset!
+# Train by dev dataset, test by hold-out set!
 # LDA model fitting
 lda.Final <- lda(survival_index ~ .-sample_id, data = clin_dataset_full)
 lda.pred <- predict(lda.Final, clin_dataset, type = "class")
@@ -148,6 +148,11 @@ LDAError_F <- 1-as.numeric(cMat$overall[1])
   cat(toString(current_feature))
   cat("\n")
 }
+lda.pred.test <- predict(lda.Final, clin_dataset_full, type = "class")
+cMat_T <- confusionMatrix(lda.pred.test$class,clin_dataset_full$survival_index)
+{
+  cat(sprintf("\nLDA performance on training set: %2.3g\n",cMat_T$overall[1]))
+}
 
 # Visualization
 #install.packages("klaR")
@@ -158,80 +163,84 @@ library(klaR)
   lda.Final.values <- predict(lda.Final)
   # Mapping of training data onto a pair of discriminant variables
   # Data label
-  png(filename="./2/LDA/LDA_training_data_12.png")
+  png(filename="./Result/LDA/LDA_training_data_12.png")
   plot(lda.Final.values$x[,1],lda.Final.values$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD1-LD2")
   dev.off()
-  png(filename="./2/LDA/LDA_training_data_23.png")
+  png(filename="./Result/LDA/LDA_training_data_23.png")
   plot(lda.Final.values$x[,2],lda.Final.values$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD2-LD3")
   dev.off()
-  png(filename="./2/LDA/LDA_training_data_31.png")
+  png(filename="./Result/LDA/LDA_training_data_31.png")
   plot(lda.Final.values$x[,3],lda.Final.values$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset_full$survival_index, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA training data distribution, LD3-LD1")
   dev.off()
-  
+}
+{
   # Fitted model
-  png(filename="./2/LDA/LDA_training_fit_12.png")
+  png(filename="./Result/LDA/LDA_training_fit_12.png")
   plot(lda.Final.values$x[,1],lda.Final.values$x[,2], xlab = "LD1", ylab = "LD2", col=lda.Final.values$class, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Fitted LDA, LD1-LD2")
   dev.off()
-  png(filename="./2/LDA/LDA_training_fit_23.png")
+  png(filename="./Result/LDA/LDA_training_fit_23.png")
   plot(lda.Final.values$x[,2],lda.Final.values$x[,3], xlab = "LD2", ylab = "LD3", col=lda.Final.values$class, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Fitted LDA, LD2-LD3")
   dev.off()
-  png(filename="./2/LDA/LDA_training_fit_31.png")
+  png(filename="./Result/LDA/LDA_training_fit_31.png")
   plot(lda.Final.values$x[,3],lda.Final.values$x[,1], xlab = "LD3", ylab = "LD1", col=lda.Final.values$class, pch = 16) # make a scatterplot
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Fitted LDA, LD3-LD1")
   dev.off()
-  
+}
+{
   # Test data performance
   # Data label
-  png(filename="./2/LDA/LDA_test_data_12.png")
+  png(filename="./Result/LDA/LDA_test_data_12.png")
   plot(lda.pred$x[,1],lda.pred$x[,2], xlab = "LD1", ylab = "LD2", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD1-LD2")
   dev.off()
-  png(filename="./2/LDA/LDA_test_data_23.png")
+  png(filename="./Result/LDA/LDA_test_data_23.png")
   plot(lda.pred$x[,2],lda.pred$x[,3], xlab = "LD2", ylab = "LD3", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD2-LD3")
   dev.off()
-  png(filename="./2/LDA/LDA_test_data_31.png")
+  png(filename="./Result/LDA/LDA_test_data_31.png")
   plot(lda.pred$x[,3],lda.pred$x[,1], xlab = "LD3", ylab = "LD1", col=clin_dataset$survival_index, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("LDA test data distribution, LD3-LD1")
   dev.off()
-  
+}
+{ 
   # Prediction
-  png(filename="./2/LDA/LDA_test_fit_12.png")
+  png(filename="./Result/LDA/LDA_test_fit_12.png")
   plot(lda.pred$x[,1],lda.pred$x[,2], xlab = "LD1", ylab = "LD2", col=lda.pred$class, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Prediction by LDA, LD1-LD2")
   dev.off()
-  png(filename="./2/LDA/LDA_test_fit_23.png")
+  png(filename="./Result/LDA/LDA_test_fit_23.png")
   plot(lda.pred$x[,2],lda.pred$x[,3], xlab = "LD1", ylab = "LD2", col=lda.pred$class, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Prediction by LDA, LD2-LD3")
   dev.off()
-  png(filename="./2/LDA/LDA_test_fit_31.png")
+  png(filename="./Result/LDA/LDA_test_fit_31.png")
   plot(lda.pred$x[,3],lda.pred$x[,1], xlab = "LD1", ylab = "LD2", col=lda.pred$class, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Prediction by LDA, LD3-LD1")
   dev.off()
-  
+}
+{
   # Performance
-  png(filename="./2/LDA/LDA_performance.png")
+  png(filename="./Result/LDA/LDA_performance.png")
   plot(clin_dataset$survival_index,lda.pred$class,xlab = "Test data", ylab = "Prediction by LDA", col= c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
 
-save.image("./2/LDA/v20181204_LDA_data.RData")
+save.image("./Result/LDA/v20181204_LDA_data.RData")
