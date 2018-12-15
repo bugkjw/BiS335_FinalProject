@@ -1,4 +1,6 @@
 library(MASS)
+#install.packages("caret")
+library(caret)
 #install.packages("klaR")
 library(klaR)
 #install.packages("doParallel")
@@ -6,8 +8,8 @@ library(doParallel)
 registerDoParallel(4)
 getDoParWorkers()
 
-setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
-#setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
+#setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
+setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
