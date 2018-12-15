@@ -8,7 +8,8 @@ library(gbm)
 #install.packages("caret")
 library(caret)
 
-setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
+setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
+#setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
@@ -116,13 +117,13 @@ dev.off()
 # Full data (for fitting)
 cat("Full dataset construction\n")
 if (length(gex_feature) == 1){
-  gex_dataset <- data.frame(gex[gex_feature,])
+  gex_dataset <- data.frame(gex_DEV[gex_feature,])
   colnames(gex_dataset) <- gex_feature
 }else{
-  gex_dataset <- t(gex[gex_feature,])
+  gex_dataset <- t(gex_DEV[gex_feature,])
 }
 gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-clin_dataset_full <- merge(clin_label, gex_dataset, by = "sample_id", all = FALSE)
+clin_dataset_DEV <- merge(DEV_DATA, gex_dataset, by = "sample_id", all = FALSE)
 # Hold-out
 cat("Hold-out dataset construction\n")
 if (length(gex_feature) == 1){
@@ -132,15 +133,28 @@ if (length(gex_feature) == 1){
   gex_dataset <- t(gex_HOLDOUT[gex_feature,])
 }
 gex_dataset <- data.frame(sample_id = rownames(gex_dataset),gex_dataset); rownames(gex_dataset) <- NULL
-clin_dataset <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all = FALSE)
+clin_dataset_HOLDOUT <- merge(HOLDOUT_DATA, gex_dataset, by = "sample_id", all = FALSE)
 
 # Dataset ready
 # Estimate test error using hold-out set
 # Train by dev dataset, test by hold-out set!
 # LDA model fitting
-lda.Final <- lda(survival_index ~ .-sample_id, data = clin_dataset_full)
-lda.pred <- predict(lda.Final, clin_dataset, type = "class")
-cMat <- confusionMatrix(lda.pred$class,clin_dataset$survival_index)
+lda.Final <- lda(survival_index ~ .-sample_id, data = clin_dataset_DEV)
+# Training error
+lda.pred <- predict(lda.Final, clin_dataset_DEV, type = "class")
+cMat <- confusionMatrix(lda.pred$class,clin_dataset_DEV$survival_index)
+LDAError_T <- 1-as.numeric(cMat$overall[1])
+{
+  # Performance
+  png(filename="./Result/LDA/LDA_training.png")
+  plot(clin_dataset_DEV$survival_index,lda.pred$class,xlab = "Training data", ylab = "Prediction by LDA", col= c(1,2,3,4))
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat$overall[1]))
+  dev.off()
+}
+# Test
+lda.pred <- predict(lda.Final, clin_dataset_HOLDOUT, type = "class")
+cMat <- confusionMatrix(lda.pred$class,clin_dataset_HOLDOUT$survival_index)
 LDAError_F <- 1-as.numeric(cMat$overall[1])
 {
   cat(sprintf("\nLDA performance on test set: %2.3g\n",cMat$overall[1]))
@@ -148,10 +162,13 @@ LDAError_F <- 1-as.numeric(cMat$overall[1])
   cat(toString(current_feature))
   cat("\n")
 }
-lda.pred.test <- predict(lda.Final, clin_dataset_full, type = "class")
-cMat_T <- confusionMatrix(lda.pred.test$class,clin_dataset_full$survival_index)
 {
-  cat(sprintf("\nLDA performance on training set: %2.3g\n",cMat_T$overall[1]))
+  # Performance
+  png(filename="./Result/LDA/LDA_performance.png")
+  plot(clin_dataset$survival_index,lda.pred$class,xlab = "Test data", ylab = "Prediction by LDA", col= c(1,2,3,4))
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
+  title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
+  dev.off()
 }
 
 # Visualization
@@ -232,14 +249,6 @@ library(klaR)
   plot(lda.pred$x[,3],lda.pred$x[,1], xlab = "LD1", ylab = "LD2", col=lda.pred$class, pch = 16) # make a scatterplot
   legend("topright", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
   title("Prediction by LDA, LD3-LD1")
-  dev.off()
-}
-{
-  # Performance
-  png(filename="./Result/LDA/LDA_performance.png")
-  plot(clin_dataset$survival_index,lda.pred$class,xlab = "Test data", ylab = "Prediction by LDA", col= c(1,2,3,4))
-  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
-  title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
 

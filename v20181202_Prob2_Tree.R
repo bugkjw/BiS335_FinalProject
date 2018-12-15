@@ -5,6 +5,11 @@ library(MASS)
 library(randomForest)
 #install.packages("caret")
 library(caret)
+#install.packages("doParallel")
+library(doParallel)
+registerDoParallel(4)
+getDoParWorkers()
+
 
 setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
 
