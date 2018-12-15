@@ -7,6 +7,10 @@ library(randomForest)
 library(gbm)
 #install.packages("caret")
 library(caret)
+#install.packages("doParallel")
+library(doParallel)
+registerDoParallel(4)
+getDoParWorkers()
 
 setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
 #setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project/Finalterm-Project")
@@ -252,4 +256,4 @@ library(klaR)
   dev.off()
 }
 
-save.image("./Result/LDA/v20181204_LDA_data.RData")
+save.image("./Result/LDA/LDA_data.RData")
