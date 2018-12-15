@@ -144,12 +144,6 @@ RandError_T <- 1-as.numeric(cMat_T$overall[1])
   lines(tune.out$performances$mtry,tune.out$performances$error)
   dev.off()
 }
-# Random forest: Test
-rand.pred <- predict(rf.Final, newdata = HOLDOUT_DATA,type = "class")
-cMat <- confusionMatrix(rand.pred, HOLDOUT_DATA$survival_index)
-RandError_F <- 1-as.numeric(cMat$overall[1])
-cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
-# Random forest: Visualization
 {
   par(mfrow = c(1,1))
   png(filename="./Result/Forest/RandomForest_VarImpPlot.png")
@@ -157,6 +151,11 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
   varImpPlot(rf.Final)
   dev.off()
 }
+# Random forest: Test
+rand.pred <- predict(rf.Final, newdata = HOLDOUT_DATA,type = "class")
+cMat <- confusionMatrix(rand.pred, HOLDOUT_DATA$survival_index)
+RandError_F <- 1-as.numeric(cMat$overall[1])
+cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 # Random forest: Performance
 {
   png(filename="./Result/Forest/RandomForest_performance.png")
@@ -203,6 +202,15 @@ BoostError_T <- 1-as.numeric(cMat_T$overall[1])
 png(filename="./Result/Forest/Boosting_Visualization.png")
 plot(boost.Final)
 dev.off()
+{
+  par(mfrow = c(1,1))
+  png(filename="./Result/Forest/Boosting_VarImpPlot.png")
+  vip <- summary(boost.Final)[1:30,]; rownames(vip) <- NULL
+  par(mai=c(1,1,1,1))
+  barplot(rev(vip$rel.inf), names.arg = rev(vip$var), horiz = TRUE, las = 1, xlab = "Relative influence")
+  title("Variable importance plot")
+  dev.off()
+}
 # Boosting: Test
 HOLDOUT_DATA_gbm <- HOLDOUT_DATA[,2:length(colnames(HOLDOUT_DATA))]
 boost.pred <- predict(boost.Final
