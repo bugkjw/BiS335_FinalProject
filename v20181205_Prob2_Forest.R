@@ -240,4 +240,4 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
   cat(sprintf("Boosted model test error estimation:         %2.3f\n",BoostError_F));
 }
 
-save.image("./Result/Forest/v20181204_Forest_data.RData")
+save.image("./Result/Forest/Forest_data.RData")
