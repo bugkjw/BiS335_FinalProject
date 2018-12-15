@@ -82,7 +82,7 @@ BagError_T <- 1-as.numeric(cMat_T$overall[1])
        , xlab = "Training data", ylab = "Prediction by the random forest (no predictor reduction)"
        , col = c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
-  title(sprintf("Test misclassification error: %2.3g",1-cMat_T$overall[1]))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat_T$overall[1]))
   dev.off()
 }
 # Bagging: Test
@@ -117,7 +117,7 @@ tune.out <- tune.randomForest(survival_index ~ .-sample_id
                               , ntree = 500
                               , mtry = seq(round(sqrt(length(colnames(DEV_DATA))-2))
                                            , length(colnames(DEV_DATA))-2
-                                           , 100)
+                                           , 200)
                               , tunecontrol = fit.control)
 rf.best <- tune.out$best.parameters
 rf.Final <- randomForest(survival_index ~ .-sample_id
