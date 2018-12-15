@@ -91,20 +91,20 @@ cat(sprintf("\nRandom forest (no predictor reduction) performance on test set: %
 
 # Random forest
 set.seed(1)
-tune.grid <- expand.grid(n.trees = seq(1e3,1e4,1e3)
-                         , mtry = seq(1,10,length(colnames(DEV_DATA))-2))
-fit.control <- trainControl(method = "cv"
-                            , number = 5
-)
-rand.forest <- train(survival_index ~ .-sample_id
-                    , method = "rf"
+fit.control <- tune.control(cross = 5)
+tune.out <- tune.rf(survival_index ~ .-sample_id
                     , data = droplevels(DEV_DATA)
-                    , trControl = fit.control
-                    , tuneGrid = tune.grid
-                    , verbose = FALSE
-)
+                    , n.trees = c(1e3,1e4,1e3)
+                    , mtry = c(1,10,length(colnames(DEV_DATA))-2)
+                    , tunecontrol = fit.control)
+rf.best <- tune.out$best.parameters
 # Random forest: Test
-rand.pred <- predict(rand.forest, newdata = HOLDOUT_DATA,type = "class")
+rf.Final <- rf(survival_index ~ .-sample_id
+               , data = droplevels(DEV_DATA)
+               , n.trees = as.numeric(rf.best[1])
+               , mtry = as.numeric(rf.best[2])
+               , tunecontrol = fit.control)
+rand.pred <- predict(rf.Final, newdata = HOLDOUT_DATA,type = "class")
 cMat <- confusionMatrix(rand.pred, HOLDOUT_DATA$survival_index)
 RandError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
@@ -112,10 +112,11 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 {
   par(mfrow = c(1,1))
   png(filename="./2/Tree/RandomForest_VarImpPlot.png")
-  importance(rand.forest)
-  varImpPlot(rand.forest)
+  importance(rf.Final)
+  varImpPlot(rf.Final)
   dev.off()
-  
+}
+{
   png(filename="./2/Tree/RandomForest_performance.png")
   plot(HOLDOUT_DATA$survival_index,rand.pred
        , xlab = "Test data", ylab = "Prediction by the random forest"
@@ -126,27 +127,28 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 }
 
 # Boosting
-tune.grid <- expand.grid(n.trees = seq(1e3,1e4,1e3)
-                         , interaction.depth = seq(1,6,2)
-                         , shrinkage = seq(1e-5,1e-2,2e-3)
-                         , n.minobsinnode = 10
-                         )
-fit.control <- trainControl(method = "cv"
-                            , number = 5
-                            )
-boost.model <- train(survival_index ~ .-sample_id
-                     , method = "gbm"
-                     , distribution = "gaussian"
+set.seed(1)
+tune.out <- tune.gbm(survival_index ~ .-sample_id
                      , data = droplevels(DEV_DATA)
-                     , trControl = fit.control
-                     , tuneGrid = tune.grid
-                     , verbose = FALSE
-                     )
+                     , n.trees = c(1e3,1e4,1e5)
+                     , interaction.depth = c(1,2,3,4)
+                     , shrinkage = c(1e-5,1e-3,2e-2)
+                     , n.minobsinnode = 10
+                     , distribution = "gaussian"
+                     , tunecontrol = fit.control)
+boost.best <- tune.out$best.parameters
 # Boosting: Test
+boost.Final <- gbm(survival_index ~ .-sample_id
+                   , data = droplevels(DEV_DATA)
+                   , n.trees = as.numeric(boost.best[1])
+                   , interaction.depth = as.numeric(boost.best[2])
+                   , shrinkage = as.numeric(boost.best[3])
+                   , n.minobsinnode = 10
+                   , distribution = "gaussian")
 boost.pred <- predict(boost.model
                       , newdata = HOLDOUT_DATA
                       , type = "link"
-                      , n.trees = 10000)
+                      , n.trees = as.numeric(boost.best[1]))
 cMat <- confusionMatrix(factor(round(boost.pred)), HOLDOUT_DATA$survival_index)
 BoostError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
@@ -154,7 +156,7 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
 {
   par(mfrow = c(1,1))
   png(filename="./2/Tree/Boosting_Visualization.png")
-  gbm.perf(boost.model)
+  gbm.perf(boost.Final)
   dev.off()
   
   png(filename="./2/Tree/Boosting_performance.png")
@@ -166,7 +168,6 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
-
 {
   cat(sprintf("Bagging forest test error estimation:        %2.3f\n",BagError_F));
   cat(sprintf("Random forest test error estimation:         %2.3f\n",RandError_F));

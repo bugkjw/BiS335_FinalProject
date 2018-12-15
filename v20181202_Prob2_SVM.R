@@ -197,7 +197,7 @@ if (length(gex_feature) == 0){cat("No gex feature tested. Continue...\n")
 if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
 }else{
   mut_list <- unique(mut[mut$Hugo_Symbol %in% mut_feature, c("sample_id","Hugo_Symbol")])
-  mut_ids <- as.character(gex_DEV$sample_id);
+  mut_ids <- as.character(clin$sample_id);
   mut_dataset <- data.frame(matrix(0,nrow = length(mut_ids), ncol = length(mut_feature)));
   rownames(mut_dataset) <- mut_ids; colnames(mut_dataset) <- mut_feature
   for (ll in 1:length(mut_ids)){
@@ -212,7 +212,7 @@ if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
     }
   }
   mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-  if (flag == 1){clin_dataset_DEV <- merge(gex_DEV, mut_dataset, by = "sample_id", all = FALSE)
+  if (flag == 1){clin_dataset_DEV <- merge(DEV_DATA, mut_dataset, by = "sample_id", all = FALSE)
   }else if (flag == 0){clin_dataset_DEV <- merge(clin_dataset_DEV, mut_dataset, by = "sample_id", all = FALSE)}
 }
 # Hold-out
@@ -269,8 +269,8 @@ best <- tune.out$best.parameters
 svm.Final <- svm(survival_index ~ .
                  , data = clin_dataset_DEV[,2:length(colnames(clin_dataset_DEV))]
                  , kernel = "radial"
-                 , cost = as.numeric(best[2])
                  , gamma = as.numeric(best[1])
+                 , cost = as.numeric(best[2])
                  , scale = FALSE)
 svm.pred <- predict(svm.Final, clin_dataset_HOLDOUT, type = "class")
 cMat <- confusionMatrix(svm.pred,clin_dataset_HOLDOUT$survival_index)

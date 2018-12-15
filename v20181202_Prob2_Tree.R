@@ -68,7 +68,7 @@ for(ii in 1:length(feature_all)){
       tmp_gex_feature <- gex_feature
       tmp_mut_feature <- c(mut_feature, candidates[jj])
     }
-    # Dataset condtruction
+    # Dataset construction
     # With the current feature set (to be tested),
     # make a table containing class labels and feature values of each patient.
     cat(sprintf("Feature %d selection, looking at candidate %d\n", ii, jj))
@@ -143,13 +143,14 @@ for(ii in 1:length(feature_all)){
     mut_feature <- c(mut_feature, new_feature)
   }
 }
-png(filename="./2/Tree/CV_errors.png")
-{par(mfrow = c(1,1))
+{
+  png(filename="./2/Tree/CV_errors.png")
+  par(mfrow = c(1,1))
   plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
   lines(1:ii, CV_errors_procedure)
   text(1:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
+  dev.off()
 }
-dev.off()
 
 # Test error estimate using hold-out set
 # Dataset condtruction
@@ -172,7 +173,7 @@ if (length(gex_feature) == 0){cat("No gex feature tested. Continue...\n")
 if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
 }else{
   mut_list <- unique(mut[mut$Hugo_Symbol %in% mut_feature, c("sample_id","Hugo_Symbol")])
-  mut_ids <- as.character(gex_DEV$sample_id);
+  mut_ids <- as.character(DEV_DATA$sample_id);
   mut_dataset <- data.frame(matrix(0,nrow = length(mut_ids), ncol = length(mut_feature)));
   rownames(mut_dataset) <- mut_ids; colnames(mut_dataset) <- mut_feature
   for (ll in 1:length(mut_ids)){
@@ -223,7 +224,7 @@ if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
     }
   }
   mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-  if (flag == 1){clin_dataset_HOLDOUT <- merge(clin_dataset_HOLDOUT, mut_dataset, by = "sample_id", all = FALSE)
+  if (flag == 1){clin_dataset_HOLDOUT <- merge(HOLDOUT_DATA, mut_dataset, by = "sample_id", all = FALSE)
   }else if (flag == 0){clin_dataset_HOLDOUT <- merge(clin_dataset_HOLDOUT, mut_dataset, by = "sample_id", all = FALSE)}
 }
 
@@ -283,7 +284,6 @@ cat(sprintf("\nPruned decision tree performance on test set: %2.3g\n",cMat$overa
   title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
-
 {
   cat(sprintf("Feature set: "))
   cat(toString(current_feature))
