@@ -3,11 +3,16 @@ library(tree)
 library(MASS)
 #install.packages("randomForest")
 library(randomForest)
-#install.packages("caret")
+install.packages("caret")
 library(caret)
 library(e1071)
+#install.packages("doParallel")
+library(doParallel)
+registerDoParallel(4)
+getDoParWorkers()
 
-setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
+#setwd("C:/Users/VSlab#10/Desktop/JinwooKim/BiS335_FinalProject_Folder")
+setwd("D:/윈도우계정/Desktop/!/3학년3가을학기/BiS335 Biomedical Statistics & Statistical Learning/Final Project")
 
 # Data import
 clin <- readRDS("./Data/clinical.rds");
@@ -62,24 +67,25 @@ HOLDOUT_DATA <- shuffle[SELECT,]
 # Bagging
 set.seed(1)
 # Use all the features
-bag.forest <- randomForest(survival_index ~ .-sample_id
+bag.Final <- randomForest(survival_index ~ .-sample_id
                            ,data = droplevels(DEV_DATA)
                            ,mtry = length(colnames(DEV_DATA))-2
                            ,importance = TRUE)
 # Bagging: Test
-bag.pred <- predict(bag.forest, newdata = HOLDOUT_DATA, type = "class")
+bag.pred <- predict(bag.Final, newdata = HOLDOUT_DATA, type = "class")
 cMat <- confusionMatrix(bag.pred, HOLDOUT_DATA$survival_index)
 BagError_F <- 1-as.numeric(cMat$overall[1])
 cat(sprintf("\nRandom forest (no predictor reduction) performance on test set: %2.3g\n",cMat$overall[1]))
 # Bagging: Visualization
 {
   par(mfrow = c(1,1))
-  png(filename="./2/Tree/Bagging_VarImpPlot.png")
-  importance(bag.forest)
-  varImpPlot(bag.forest)
+  png(filename="./Result/Forest/Bagging_VarImpPlot.png")
+  importance(bag.Final)
+  varImpPlot(bag.Final)
   dev.off()
-  
-  png(filename="./2/Tree/Bagging_performance.png")
+}
+{
+  png(filename="./Result/Forest/Bagging_performance.png")
   plot(HOLDOUT_DATA$survival_index
        , bag.pred
        , xlab = "Test data", ylab = "Prediction by the random forest (no predictor reduction)"
@@ -92,11 +98,13 @@ cat(sprintf("\nRandom forest (no predictor reduction) performance on test set: %
 # Random forest
 set.seed(1)
 fit.control <- tune.control(cross = 5)
-tune.out <- tune.rf(survival_index ~ .-sample_id
-                    , data = droplevels(DEV_DATA)
-                    , n.trees = c(1e3,1e4,1e3)
-                    , mtry = c(1,10,length(colnames(DEV_DATA))-2)
-                    , tunecontrol = fit.control)
+tune.out <- tune.randomForest(survival_index ~ .-sample_id
+                              , data = droplevels(DEV_DATA)
+                              , ntree = c(1e3,1e4,1e3)
+                              , mtry = seq(sqrt(length(colnames(DEV_DATA)))
+                                           , length(colnames(DEV_DATA))-2
+                                           , 100)
+                              , tunecontrol = fit.control)
 rf.best <- tune.out$best.parameters
 # Random forest: Test
 rf.Final <- rf(survival_index ~ .-sample_id
@@ -104,6 +112,7 @@ rf.Final <- rf(survival_index ~ .-sample_id
                , n.trees = as.numeric(rf.best[1])
                , mtry = as.numeric(rf.best[2])
                , tunecontrol = fit.control)
+# Random forest: Test
 rand.pred <- predict(rf.Final, newdata = HOLDOUT_DATA,type = "class")
 cMat <- confusionMatrix(rand.pred, HOLDOUT_DATA$survival_index)
 RandError_F <- 1-as.numeric(cMat$overall[1])
@@ -111,13 +120,20 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 # Random forest: Visualization
 {
   par(mfrow = c(1,1))
-  png(filename="./2/Tree/RandomForest_VarImpPlot.png")
+  png(filename="./Result/Forest/RandomForest_VarImpPlot.png")
   importance(rf.Final)
   varImpPlot(rf.Final)
   dev.off()
 }
 {
-  png(filename="./2/Tree/RandomForest_performance.png")
+  # Tune grid
+  png(filename = "./Result/Forest/RandomForest_Tunegrid.png")
+  plot(tune.out, type = "perspective", theta = 100, phi = 20)
+  dev.off()
+}
+# Random forest: Performance
+{
+  png(filename="./Result/Forest/RandomForest_performance.png")
   plot(HOLDOUT_DATA$survival_index,rand.pred
        , xlab = "Test data", ylab = "Prediction by the random forest"
        , col = c(1,2,3,4))
@@ -155,11 +171,11 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
 # Boosting: Visualization
 {
   par(mfrow = c(1,1))
-  png(filename="./2/Tree/Boosting_Visualization.png")
+  png(filename="./Result/Forest/Boosting_Visualization.png")
   gbm.perf(boost.Final)
   dev.off()
   
-  png(filename="./2/Tree/Boosting_performance.png")
+  png(filename="./Result/Forest/Boosting_performance.png")
   plot(HOLDOUT_DATA$survival_index
        , factor(round(boost.pred))
        , xlab = "Test data", ylab = "Prediction by the gradient boosted model"
@@ -174,4 +190,4 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
   cat(sprintf("Boosted model test error estimation:         %2.3f\n",BoostError_F));
 }
 
-save.image("./2/Tree/v20181204_Forest_data.RData")
+save.image("./Result/Forest/v20181204_Forest_data.RData")
