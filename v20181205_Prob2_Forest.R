@@ -100,10 +100,10 @@ set.seed(1)
 fit.control <- tune.control(cross = 5)
 tune.out <- tune.randomForest(survival_index ~ .-sample_id
                               , data = droplevels(DEV_DATA)
-                              , ntree = c(1e3,1e4,1e3)
-                              , mtry = seq(sqrt(length(colnames(DEV_DATA)))
+                              , ntree = c(1e3,1e4)
+                              , mtry = seq(round(sqrt(length(colnames(DEV_DATA))-2))
                                            , length(colnames(DEV_DATA))-2
-                                           , 100)
+                                           , 200)
                               , tunecontrol = fit.control)
 rf.best <- tune.out$best.parameters
 # Random forest: Test
@@ -143,24 +143,19 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 }
 
 # Boosting
-set.seed(1)
-tune.out <- tune.gbm(survival_index ~ .-sample_id
-                     , data = droplevels(DEV_DATA)
-                     , n.trees = c(1e3,1e4,1e5)
-                     , interaction.depth = c(1,2,3,4)
-                     , shrinkage = c(1e-5,1e-3,2e-2)
-                     , n.minobsinnode = 10
-                     , distribution = "gaussian"
-                     , tunecontrol = fit.control)
-boost.best <- tune.out$best.parameters
+set.seed(2)
+fit.control <- trainControl(method = "cv", number = 5)
+tune.grid <- expand.grid(interaction.depth = c(1,2)
+                         , n.trees = c(1e3,1e4)
+                         , shrinkage = c(0.01,0.1)
+                         , n.minobsinnode = 10)
+boost.Final <- train(survival_index ~ .-sample_id
+                    , data = droplevels(DEV_DATA)
+                    , method = "gbm"
+                    , trControl = fit.control
+                    , tuneGrid = tune.grid
+                    , verbose = FALSE)
 # Boosting: Test
-boost.Final <- gbm(survival_index ~ .-sample_id
-                   , data = droplevels(DEV_DATA)
-                   , n.trees = as.numeric(boost.best[1])
-                   , interaction.depth = as.numeric(boost.best[2])
-                   , shrinkage = as.numeric(boost.best[3])
-                   , n.minobsinnode = 10
-                   , distribution = "gaussian")
 boost.pred <- predict(boost.model
                       , newdata = HOLDOUT_DATA
                       , type = "link"
@@ -172,9 +167,10 @@ cat(sprintf("\nBoosting performance on test set: %2.3g\n",cMat$overall[1]))
 {
   par(mfrow = c(1,1))
   png(filename="./Result/Forest/Boosting_Visualization.png")
-  gbm.perf(boost.Final)
+  plot(boost.Final)
   dev.off()
-  
+}
+{
   png(filename="./Result/Forest/Boosting_performance.png")
   plot(HOLDOUT_DATA$survival_index
        , factor(round(boost.pred))
