@@ -145,9 +145,9 @@ for(ii in 1:length(feature_all)){
 }
 {
   png(filename="./Result/Tree/CV_errors.png")
-  plot(2:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
-  lines(2:ii, CV_errors_procedure)
-  text(2:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
+  plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
+  lines(1:ii, CV_errors_procedure)
+  text(1:ii, CV_errors_procedure, labels = c(current_feature,"(Terminate)"))
   dev.off()
 }
 
@@ -236,7 +236,13 @@ tree.Final <- tree(survival_index ~ .-sample_id, clin_dataset_DEV)
 tree.pred <- predict(tree.Final,clin_dataset_DEV,type = "class")
 cMat_T <- confusionMatrix(tree.pred,clin_dataset_DEV$survival_index)
 TreeError_T <- 1-as.numeric(cMat_T$overall[1])
-
+{
+  png(filename="./Result/Tree/Simple_training.png")
+  plot(clin_dataset_DEV$survival_index,tree.pred, xlab = "Training data", ylab = "Prediction by the simple decision tree", col = c(1,2,3,4))
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat_T$overall[1]))
+  dev.off()
+}
 # Decision tree: Test
 tree.pred <- predict(tree.Final,clin_dataset_HOLDOUT,type = "class")
 cMat <- confusionMatrix(tree.pred,clin_dataset_HOLDOUT$survival_index)
@@ -259,15 +265,20 @@ cat(sprintf("\nSimple decision tree performance on test set: %2.3g\n",cMat$overa
 }
 
 # Pruning
-pruning <- cv.tree(tree.Final, FUN = prune.misclass, eps = 1e-3)
+pruning <- cv.tree(tree.Final, FUN = prune.misclass, eps = 1e-3, K = 5)
 Best <- pruning$size[pruning$dev == min(pruning$dev)]
-tree.Final <- prune.misclass(tree.Final, best = Best[1])
+Ptree.Final <- prune.misclass(tree.Final, best = Best[1])
 # Training error
-tree.pred <- predict(tree.Final,clin_dataset_DEV,type = "class")
-cMat_T <- confusionMatrix(tree.pred,clin_dataset_DEV$survival_index)
-PTreeError_T <- 1-as.numeric(cMat_T$overall[1])
-
-
+Ptree.pred <- predict(Ptree.Final,clin_dataset_DEV,type = "class")
+cMat_T <- confusionMatrix(Ptree.pred,clin_dataset_DEV$survival_index)
+TreeError_T <- 1-as.numeric(cMat_T$overall[1])
+{
+  png(filename="./Result/Tree/Pruned_training.png")
+  plot(clin_dataset_DEV$survival_index,Ptree.pred, xlab = "Training data", ylab = "Prediction by the pruned decision tree", col = c(1,2,3,4))
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat_T$overall[1]))
+  dev.off()
+}
 # Pruning: Test
 ptree.pred <- predict(tree.Final,clin_dataset_HOLDOUT,type = "class")
 cMat <- confusionMatrix(ptree.pred,clin_dataset_HOLDOUT$survival_index)
@@ -283,8 +294,8 @@ cat(sprintf("\nPruned decision tree performance on test set: %2.3g\n",cMat$overa
 }
 {
   png(filename="./Result/Tree/Pruned_tree.png")
-  plot(tree.Final)
-  text(tree.Final,pretty = 0)
+  plot(Ptree.Final)
+  text(Ptree.Final,pretty = 0)
   dev.off()
 }
 {
