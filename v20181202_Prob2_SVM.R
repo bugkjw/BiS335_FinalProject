@@ -145,7 +145,7 @@ for(ii in 1:length(feature_all)){
       # Support vector machine
       svm.trainData <- svm(survival_index ~ .-sample_id
                            , data = trainData, kernel = "radial"
-                           , cost = 1
+                           , cost = 0.1
                            , gamma = 10)
       # Test
       svm.pred <- predict(svm.trainData, testData, type = "class")
@@ -156,7 +156,7 @@ for(ii in 1:length(feature_all)){
   }
   CV_errors_procedure[ii] <- min(candidate_errors)
   # Check for improvement
-  if (min(candidate_errors) > last_min_error){break}
+  if (min(candidate_errors) >= last_min_error){break}
   # Update threshold
   last_min_error <- min(candidate_errors)
   # Greedy feature selection
@@ -172,7 +172,7 @@ for(ii in 1:length(feature_all)){
   }
 }
 {
-  png(filename="./Result/SVM/CV_errors.png")
+  png(filename="./Result/SVM/CV_errors_radial.png")
   par(mfrow = c(1,1))
   plot(1:ii, CV_errors_procedure, xlab = "# of features", ylab = "5-fold CV error", xlim = c(0,ii+1))
   lines(1:ii, CV_errors_procedure)
@@ -269,13 +269,23 @@ tune.out <-  tune.svm(survival_index ~ .-sample_id
                       , cost = c(0.001,0.01, 0.1, 1, 10, 50, 100)
                       , tunecontrol = fit.control)
 best <- tune.out$best.parameters
-# Test
 svm.Final <- svm(survival_index ~ .
                  , data = clin_dataset_DEV[,2:length(colnames(clin_dataset_DEV))]
                  , kernel = "radial"
                  , gamma = as.numeric(best[1])
                  , cost = as.numeric(best[2])
                  , scale = FALSE)
+{
+  par(mfrow = c(1,1))
+  # Performance
+  png(filename="./Result/SVM/SVM_training_linear_kernel.png")
+  plot(clin_dataset_DEV$survival_index,svm.pred, xlab = "Training data"
+       , ylab = "Prediction by SVM", col= c(1,2,3,4))
+  legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat$overall[1]))
+  dev.off()
+}
+# Test
 svm.pred <- predict(svm.Final, clin_dataset_HOLDOUT, type = "class")
 cMat <- confusionMatrix(svm.pred,clin_dataset_HOLDOUT$survival_index)
 SVMError_F <- 1-as.numeric(cMat$overall[1])
@@ -315,4 +325,4 @@ cat(sprintf("\nSupport vector machine performance on test set: %2.3g\n",cMat$ove
   cat(sprintf("\nSupport vector machine test error estimation:           %2.3f\n",SVMError_F));
 }
 
-save.image("./Result/SVM/SVM_data.RData")
+save.image("./Result/SVM/SVM_data_radial.RData")
