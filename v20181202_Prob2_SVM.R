@@ -146,7 +146,7 @@ for(ii in 1:length(feature_all)){
       svm.trainData <- svm(survival_index ~ .-sample_id
                            , data = trainData, kernel = "radial"
                            , cost = 0.1
-                           , gamma = 10)
+                           , gamma = 1)
       # Test
       svm.pred <- predict(svm.trainData, testData, type = "class")
       cMat <- confusionMatrix(svm.pred,testData$survival_index[as.integer(names(svm.pred))-min(as.integer(names(svm.pred)))+1])
@@ -275,14 +275,18 @@ svm.Final <- svm(survival_index ~ .
                  , gamma = as.numeric(best[1])
                  , cost = as.numeric(best[2])
                  , scale = FALSE)
+# Training error
+svm.pred <- predict(svm.Final, clin_dataset_DEV, type = "class")
+cMat_T <- confusionMatrix(svm.pred,clin_dataset_DEV$survival_index)
+SVMError_T <- 1-as.numeric(cMat_T$overall[1])
 {
   par(mfrow = c(1,1))
   # Performance
-  png(filename="./Result/SVM/SVM_training_linear_kernel.png")
+  png(filename="./Result/SVM/SVM_training_radial_kernel.png")
   plot(clin_dataset_DEV$survival_index,svm.pred, xlab = "Training data"
        , ylab = "Prediction by SVM", col= c(1,2,3,4))
   legend("topleft", legend = c("Class 1","Class 2","Class 3","Class 4"), fill = c(1,2,3,4))
-  title(sprintf("Training misclassification error: %2.3g",1-cMat$overall[1]))
+  title(sprintf("Training misclassification error: %2.3g",1-cMat_T$overall[1]))
   dev.off()
 }
 # Test
