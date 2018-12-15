@@ -110,7 +110,7 @@ cat(sprintf("\nRandom forest (no predictor reduction) performance on test set: %
 }
 
 # Random forest
-set.seed(1)
+set.seed(2)
 fit.control <- tune.control(cross = 5)
 tune.out <- tune.randomForest(survival_index ~ .-sample_id
                               , data = droplevels(DEV_DATA)
@@ -168,7 +168,7 @@ cat(sprintf("\nRandom forest performance on test set: %2.3g\n",cMat$overall[1]))
 }
 
 # Boosting
-set.seed(2)
+set.seed(3)
 fit.control <- trainControl(method = "cv", number = 5)
 tune.grid <- expand.grid(interaction.depth = c(1,2,3,4)
                          , n.trees = 500
