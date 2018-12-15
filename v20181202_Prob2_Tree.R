@@ -3,8 +3,6 @@ library(tree)
 library(MASS)
 #install.packages("randomForest")
 library(randomForest)
-#install.packages("gbm")
-library(gbm)
 #install.packages("caret")
 library(caret)
 
@@ -189,7 +187,7 @@ if (length(mut_feature) == 0){cat("No mut feature tested. Continue...\n")
     }
   }
   mut_dataset <- data.frame(sample_id = rownames(mut_dataset),mut_dataset); rownames(mut_dataset) <- NULL
-  if (flag == 1){clin_dataset_DEV <- merge(gex_DEV, mut_dataset, by = "sample_id", all = FALSE)
+  if (flag == 1){clin_dataset_DEV <- merge(DEV_DATA, mut_dataset, by = "sample_id", all = FALSE)
   }else if (flag == 0){clin_dataset_DEV <- merge(clin_dataset_DEV, mut_dataset, by = "sample_id", all = FALSE)}
 }
 # Hold-out
