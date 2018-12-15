@@ -29,7 +29,6 @@ gex_DEV <- gex[,colnames(gex) %in% DEV_DATA$sample_id]
 gex_HOLDOUT <- gex[,colnames(gex) %in% HOLDOUT_DATA$sample_id]
 mut_DEV <- mut[mut$sample_id %in% DEV_DATA$sample_id,]
 mut_HOLDOUT <- mut[mut$sample_id %in% HOLDOUT_DATA$sample_id,]
-feature_all <- c(gex_feature_all, mut_feature_all)
 
 # Data preprocessing: scale to [0,1]
 samples = sample(ncol(t(gex_DEV)), 20)
@@ -55,7 +54,10 @@ gex_HOLDOUT = (gex_HOLDOUT - gex_minimum)/gex_range
 # Candidate genomic features to be used as features while fitting
 gex_feature_all <- as.character(gex_res$Hugo_Symbol);
 gex_feature_all <- gex_feature_all[gex_feature_all %in% rownames(gex_DEV)]; factor(gex_feature_all)
-feature_all <- gex_feature_all
+mut_feature_all <- as.character(mut_res$Hugo_Symbol);
+mut_feature_all <- mut_feature_all[mut_feature_all %in% mut_DEV$Hugo_Symbol]; factor(mut_feature_all)
+feature_all <- c(gex_feature_all, mut_feature_all)
+
 
 # Feature selection by forward stepwise selection
 # For each feature set expansion, assess 5-fold CV misclassification error rate
@@ -139,8 +141,8 @@ for(ii in 1:length(feature_all)){
       # Support vector machine
       svm.trainData <- svm(survival_index ~ .-sample_id
                            , data = trainData, kernel = "radial"
-                           , cost = 0.1
-                           , gamma = 1)
+                           , cost = 1
+                           , gamma = 10)
       # Test
       svm.pred <- predict(svm.trainData, testData, type = "class")
       cMat <- confusionMatrix(svm.pred,testData$survival_index[as.integer(names(svm.pred))-min(as.integer(names(svm.pred)))+1])
