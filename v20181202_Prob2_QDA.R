@@ -173,6 +173,15 @@ QDAError_F <- 1-as.numeric(cMat$overall[1])
   cat(toString(current_feature))
   cat("\n")
 }
+{
+  par(mfrow = c(1,1))
+  # Performance
+  png(filename="./Result/QDA/QDA_performance.png")
+  plot(clin_dataset_HOLDOUT$survival_index,qda.pred$class,xlab = "Test data", ylab = "Prediction by QDA", col= c(1,3,4))
+  legend("topleft", legend = c("Class 1","Class 3","Class 4"), fill = c(1,3,4))
+  title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
+  dev.off()
+}
 
 # Visualization
 #install.packages("klaR")
@@ -181,19 +190,10 @@ library(klaR)
   # Fitted decision boundary in terms of original feature space
   # https://stats.stackexchange.com/questions/143692/plotting-qda-projections-in-r
   # https://stackoverflow.com/questions/23420094/cant-plot-the-result-of-a-quadratic-discriminant-analysis-using-partimat-in-the
-  # X11(width=20, height=20)
-  png(filename="./Result/QDA/Feature_3_boundary.png")
+  X11(width=20, height=20)
+  png(filename="./Result/QDA/Feature_3_boundary_.png")
   partimat(survival_index ~ .-sample_id, data = clin_dataset_DEV[,1:5], method = "qda",
            plot.matrix = TRUE, col.correct='blue', col.wrong='red')
-  dev.off()
-}
-{
-  par(mfrow = c(1,1))
-  # Performance
-  png(filename="./Result/QDA/QDA_performance.png")
-  plot(clin_dataset_HOLDOUT$survival_index,qda.pred$class,xlab = "Test data", ylab = "Prediction by QDA", col= c(1,3,4))
-  legend("topleft", legend = c("Class 1","Class 3","Class 4"), fill = c(1,3,4))
-  title(sprintf("Test misclassification error: %2.3g",1-cMat$overall[1]))
   dev.off()
 }
 
